@@ -2,7 +2,6 @@ package bytes
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -29,7 +28,13 @@ type Buffer struct {
 	forStack []bool
 }
 
-func NewBuffer(b []byte) *Buffer { return &Buffer{data: b} }
+func NewBuffer(b []byte) *Buffer {
+	return &Buffer{
+		data:     b,
+		ifStack:  make([]bool, 0, 8),
+		forStack: make([]bool, 0, 8),
+	}
+}
 
 // Reader creates an io.Reader for Read.
 func (b Buffer) Reader() io.Reader { return bytes.NewReader(b.BytesCopy()) }
@@ -117,9 +122,6 @@ func (b *Buffer) WriteBytes(s []byte) *Buffer {
 	if !b.shouldWrite() {
 		return b
 	}
-	if json.Valid(s) {
-		return b.WriteJsonSafeBytes(s)
-	}
 	b.data = append(b.data, s...)
 	return b
 }
@@ -145,9 +147,6 @@ func (b *Buffer) WriteRune(r rune) *Buffer {
 func (b *Buffer) WriteString(s string) *Buffer {
 	if !b.shouldWrite() {
 		return b
-	}
-	if json.Valid([]byte(s)) {
-		return b.writeJsonSafeString(s)
 	}
 	b.data = append(b.data, s...)
 	return b

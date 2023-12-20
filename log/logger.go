@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/FlyingOnion/pkg/bytes"
 )
@@ -16,7 +17,7 @@ type Logger struct {
 	callerSkip int
 	// fields is a sequence of fields using formatter.Formatxxx;
 	// they will be written in front of msg
-	fields    []bytes.BufferWriter
+	fields    []func(f Formatter, event *Event) bytes.BufferWriter
 	formatter Formatter
 	writer    io.Writer
 
@@ -38,6 +39,26 @@ func New() *Logger {
 	}
 }
 
+func (l *Logger) SetLevel(level Level)   { l.level = level }
+func (l *Logger) SetCallerSkip(skip int) { l.callerSkip = skip }
+func (l *Logger) SetFields(fields ...func(f Formatter, event *Event) bytes.BufferWriter) {
+	l.fields = fields
+}
+func (l *Logger) SetFormatter(formatter Formatter) { l.formatter = formatter }
+func (l *Logger) SetWriter(writer io.Writer)       { l.writer = writer }
+func (l *Logger) SetAlarmPanic(alarmPanic func(msg string)) {
+	l.alarmPanic = alarmPanic
+}
+func (l *Logger) SetAlarmFatal(alarmFatal func(msg string, exitCode int)) {
+	l.alarmFatal = alarmFatal
+}
+
+var (
+	FieldLevel  = func(f Formatter, event *Event) bytes.BufferWriter { return f.FormatLevel(event.Level) }
+	FieldTime   = func(f Formatter, event *Event) bytes.BufferWriter { return f.FormatTime(event.Time) }
+	FieldCaller = func(f Formatter, event *Event) bytes.BufferWriter { return f.FormatCaller(event.CallerSkip) }
+)
+
 func (l *Logger) Debug(msg string, keyValues ...any) { l.log(LevelDebug, msg, keyValues...) }
 func (l *Logger) Info(msg string, keyValues ...any)  { l.log(LevelInfo, msg, keyValues...) }
 func (l *Logger) Warn(msg string, keyValues ...any)  { l.log(LevelWarn, msg, keyValues...) }
@@ -56,9 +77,11 @@ func (l *Logger) log(level Level, msg string, keyValues ...any) {
 	if level < l.level {
 		return
 	}
+	event := newEvent(level, l.callerSkip, time.Now())
+	defer recycleEvent(event)
 	var b bytes.Buffer
 	b.ForNTimes(len(l.fields), func(b *bytes.Buffer, index int) {
-		b.WriteFromBufferWriter(l.fields[index]).WriteString(l.formatter.MsgSplit())
+		b.WriteFromBufferWriter(l.fields[index](l.formatter, event)).WriteString(l.formatter.MsgSplit())
 	}).WriteFromBufferWriter(l.formatter.FormatMsg(msg, keyValues...)).WriteByte('\n')
 	l.writer.Write(b.Bytes())
 }
