@@ -31,7 +31,7 @@ type Logger struct {
 func New() *Logger {
 	return &Logger{
 		level:      LevelInfo,
-		callerSkip: 4,
+		callerSkip: 7,
 		formatter:  &TextFormatter{},
 		writer:     os.Stderr,
 		alarmPanic: AlarmPanic,
@@ -86,12 +86,6 @@ func (l *Logger) log(level Level, msg string, keyValues ...any) {
 	l.writer.Write(b.Bytes())
 }
 
-type loggerOption struct {
-	msgSplit   string
-	callerSkip int
-	logLevel   Level
-}
-
 var (
 	globalLock   sync.Mutex
 	globalLogger *Logger = New()
@@ -99,7 +93,7 @@ var (
 
 // SetGlobalLogger sets a global logger.
 //
-// CallerSkip of global logger should be 4 at least. Make sure that you set the correct caller skip.
+// CallerSkip of global logger should be at least 7. Make sure that you set the correct caller skip.
 func SetGlobalLogger(logger *Logger) {
 	globalLock.Lock()
 	globalLogger = logger
