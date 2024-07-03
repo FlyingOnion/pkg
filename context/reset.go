@@ -8,9 +8,9 @@ import (
 type ResetContext interface {
 	context.Context
 	// Reset resets the deadline with the given duration.
-	// If the deadline is already passed, the context will be canceled and Reset will do nothing.
+	// If the deadline is already passed, Reset will do nothing and return false.
 	// If you use timer in your context, stop it and drain the channel before calling *timer.Reset(d).
-	Reset(d time.Duration)
+	Reset(d time.Duration) bool
 }
 
 type resetCtx struct {
@@ -27,7 +27,7 @@ func (r *resetCtx) Err() error { return r.ctx.Err() }
 
 func (r *resetCtx) Value(key any) any { return nil }
 
-func (r *resetCtx) Reset(d time.Duration) {
+func (r *resetCtx) Reset(d time.Duration) (result bool) {
 	if r.t == nil {
 		return
 	}
@@ -38,7 +38,7 @@ func (r *resetCtx) Reset(d time.Duration) {
 		return
 	default:
 	}
-	r.t.Reset(d)
+	return r.t.Reset(d)
 }
 
 // WithReset creates a resettable context.

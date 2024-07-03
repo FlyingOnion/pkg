@@ -16,4 +16,4 @@ type wrapper struct {
 
 func (c *wrapper) Next() context.Context { return c.Context }
 
-func (c *wrapper) Reset(time.Duration) {}
+func (c *wrapper) Reset(time.Duration) bool { return true }
